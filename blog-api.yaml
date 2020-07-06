@@ -7,12 +7,8 @@ info:
     Allow users to manage their posts.
   version: 1.0.0
   title: Blog
-  termsOfService: 'http://swagger.io/terms/'
-  contact:
-    email: apiteam@swagger.io
-  license:
-    name: Apache 2.0
-    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+  contact: {}
+  license: {}
 servers:
   - description: SwaggerHub API Auto Mocking
     url: 'https://virtserver.swaggerhub.com/mngibson/blog-api/1.0.0'
@@ -29,6 +25,7 @@ tags:
     externalDocs:
       description: Find out more about our store
       url: 'http://swagger.io'
+  - name: post
 paths:
   /post:
     post:
@@ -54,8 +51,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       requestBody:
-        $ref: '#/components/requestBodies/Pet'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Post'
+            examples: {}
       description: Add a blog post
+      tags:
+        - post
     parameters: []
     get:
       summary: ''
@@ -78,21 +81,16 @@ paths:
           description: Get all blog postings made by `username`
       description: Get all blog postings
       security: []
+      tags:
+        - post
   '/post/{postId}':
     get:
       tags:
-        - pet
+        - post
       summary: Get post by ID
       description: Returns a single post
       operationId: getPostById
-      parameters:
-        - name: petId
-          in: path
-          description: ID of pet to return
-          required: true
-          schema:
-            type: integer
-            format: int64
+      parameters: null
       responses:
         '200':
           description: OK
@@ -100,9 +98,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Post'
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Pet'
         '404':
           description: Post not found
           content:
@@ -111,18 +106,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
       security: []
     delete:
-      tags:
-        - pet
       summary: Deletes a post
       operationId: deletePost
-      parameters:
-        - name: petId
-          in: path
-          description: Pet id to delete
-          required: true
-          schema:
-            type: integer
-            format: int64
       responses:
         '200':
           description: OK
@@ -132,6 +117,10 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
         '400':
           description: Invalid postId supplied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
         '401':
           description: Unauthorized
           content:
@@ -145,6 +134,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       description: Delete a post
+      tags:
+        - post
     parameters:
       - schema:
           type: string
@@ -179,12 +170,14 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Post'
+      tags:
+        - post
   /user:
     post:
       tags:
         - user
       summary: Create user
-      description: ''
+      description: Create user
       operationId: createUser
       responses:
         '200':
@@ -224,6 +217,11 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/User'
+        description: |
+          username and password required
+      tags:
+        - user
+      description: User login
   /user/logout:
     post:
       summary: ''
@@ -235,19 +233,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
+      tags:
+        - user
+      description: |
+        User logout
   '/user/{username}':
     get:
       tags:
         - user
       summary: Get user by user name
       operationId: getUserByName
-      parameters:
-        - name: username
-          in: path
-          description: The name that needs to be fetched. Use user1 for testing.
-          required: true
-          schema:
-            type: string
+      parameters: null
       responses:
         '200':
           description: OK
@@ -260,19 +256,14 @@ paths:
                 $ref: '#/components/schemas/User'
         '400':
           description: Invalid username supplied
+      description: Get user by username
     put:
       tags:
         - user
       summary: Updated user
       description: This can only be done by the logged in user.
       operationId: updateUser
-      parameters:
-        - name: username
-          in: path
-          description: name that need to be updated
-          required: true
-          schema:
-            type: string
+      parameters: null
       responses:
         '200':
           description: OK
@@ -311,14 +302,14 @@ paths:
       summary: Delete user
       description: This can only be done by the logged in user.
       operationId: deleteUser
-      parameters:
-        - name: username
-          in: path
-          description: The name that needs to be deleted
-          required: true
-          schema:
-            type: string
+      parameters: null
       responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
         '400':
           description: Invalid username supplied
         '404':
@@ -365,8 +356,6 @@ components:
         id:
           type: integer
           format: int64
-        category:
-          $ref: '#/components/schemas/Category'
         title:
           type: string
           example: doggie
@@ -393,28 +382,11 @@ components:
           type: string
         message:
           type: string
-  requestBodies:
-    Pet:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Pet'
-        application/xml:
-          schema:
-            $ref: '#/components/schemas/Pet'
-      description: Pet object that needs to be added to the store
-      required: true
-    UserArray:
-      content:
-        application/json:
-          schema:
-            type: array
-            items:
-              $ref: '#/components/schemas/User'
-      description: List of user object
-      required: true
+  requestBodies: null
   securitySchemes:
     API Key - 1:
       type: http
       scheme: basic
       description: ''
+security:
+  - API Key - 1: []
