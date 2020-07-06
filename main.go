@@ -1,13 +1,26 @@
 package main
 
 import (
-	"net/http"
+	"github.com/mngibso/blog-api/routes"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
-var db = make(map[string]string)
+// mongodb+srv://blog_api:<password>@cluster0.pmalk.mongodb.net/<dbname>?retryWrites=true&w=majority
+/*
+const MongoClient = require('mongodb').MongoClient;
+const uri = "mongodb+srv://blog_api:<password>@cluster0.pmalk.mongodb.net/<dbname>?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useNewUrlParser: true });
+client.connect(err => {
+const collection = client.db("test").collection("devices");
+// perform actions on the collection object
+client.close();
+});
+*/
+// var db = make(map[string]string)
 
+/*
 func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
@@ -57,9 +70,14 @@ func setupRouter() *gin.Engine {
 
 	return r
 }
+*/
 
 func main() {
-	r := setupRouter()
+	r := gin.Default()
+	routes.SetupRoutes(r)
 	// Listen and Server in 0.0.0.0:8080
-	r.Run(":8080")
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal(err)
+	}
+
 }
