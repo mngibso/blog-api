@@ -1,35 +1,38 @@
-package main
+package db
 
 import (
 	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
+	"log"
+	"os"
+	"time"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"time"
 )
 
-func getDBClient() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	client, _ := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+var DB *mongo.Database
+
+const DBNAME = "blog"
+
+func init() {
+	uri := os.Getenv("MONGODB_URI")
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	client, _ := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	defer func() {
-		if err := client.Disconnect(ctx); err != nil {
+	DB = client.Database(DBNAME)
+	/*
+		DB.Collection("numbers")
+		res, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
+		if err != nil {
 			panic(err)
 		}
-	}()
+		id := res.InsertedID
+		fmt.Println(id)
 
-	collection := client.Database("testing").Collection("numbers")
-	res, err := collection.InsertOne(ctx, bson.M{"name": "pi", "value": 3.14159})
-	if err != nil {
-		panic(err)
-	}
-	id := res.InsertedID
-	fmt.Println(id)
+	*/
 	/*
 		cur, err := collection.Find(ctx, bson.D{})
 		if err != nil { log.Fatal(err) }

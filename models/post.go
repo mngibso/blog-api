@@ -1,9 +1,10 @@
 package models
 
 type Post struct {
-	Id        int64  `json:"id,omitempty"`
+	ID        string `json:"id" bson:"_id"`
 	Title     string `json:"title"`
 	Status    string `json:"status,omitempty"`
-	CreatedAt int32  `json:"createdAt,omitempty"`
-	Body      string `json:"body,omitempty"`
+	CreatedAt int64  `json:"createdAt,omitempty"`
+	CreatedBy string `json:"createdBy"`
+	Body      string `json:"body"`
 }
