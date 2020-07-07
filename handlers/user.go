@@ -26,7 +26,9 @@ func checkPasswordHash(password, hash string) bool {
 func CreateUser(ctx *gin.Context) {
 	var user models.CreateUserInput
 	if err := ctx.ShouldBindJSON(&user); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: err.Error(),
+		})
 		return
 	}
 	count, err := db.DB.Collection(UserCollection).
@@ -65,8 +67,37 @@ func CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, r)
 }
 
+// DeleteUser deletes the user and the user's posts
 func DeleteUser(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
+	username := ctx.Param("username")
+	if username == "" {
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: "username is required",
+		})
+		return
+	}
+	q := bson.D{{"username", username}}
+	_, err := db.DB.Collection(UserCollection).
+		DeleteOne(ctx, q)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+		return
+	}
+
+	// Delete user posts
+	_, err = db.DB.Collection(PostCollection).
+		DeleteMany(ctx, bson.D{{"username", username}})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, models.ApiResponse{
+		Message: "user deleted",
+	})
 }
 
 func GetUserByUserName(ctx *gin.Context) {

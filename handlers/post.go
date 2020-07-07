@@ -7,6 +7,8 @@ import (
 	"github.com/mngibso/blog-api/models"
 )
 
+const PostCollection = "posts"
+
 var data = models.ApiResponse{
 	Code:    0,
 	Type_:   "Don't know",
