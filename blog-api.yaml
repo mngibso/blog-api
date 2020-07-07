@@ -195,6 +195,22 @@ paths:
               $ref: '#/components/schemas/User'
         description: Created user object
         required: true
+    get:
+      summary: Get Users
+      operationId: get-user
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+      description: Get all users
+      security: []
+      tags:
+        - user
   /user/login:
     post:
       summary: ''
