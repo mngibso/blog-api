@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"context"
+	"go.mongodb.org/mongo-driver/mongo"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -101,11 +104,61 @@ func DeleteUser(ctx *gin.Context) {
 }
 
 func GetUserByUserName(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
+	var user models.UserOutput
+	username := ctx.Param("username")
+	if username == "" {
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: "username is required",
+		})
+		return
+	}
+	q := bson.D{{"username", username}}
+	err := db.DB.Collection(UserCollection).FindOne(ctx, q).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			ctx.JSON(http.StatusNotFound, models.ApiResponse{
+				Message: err.Error(),
+			})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+		return
+	}
+	// don't send password
+	ctx.JSON(http.StatusOK, user)
 }
 
-func GetUser(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
+// GetUsers returns array of users
+func GetUsers(ctx *gin.Context) {
+	users := []models.UserOutput{}
+	q := bson.D{}
+	cur, err := db.DB.Collection(UserCollection).Find(ctx, q)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cur.Close(ctx)
+	for cur.Next(context.Background()) {
+		// To decode into a struct, use cursor.Decode()
+		var user models.UserOutput
+		err := cur.Decode(&user)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+				Message: "database error: " + err.Error(),
+			})
+			return
+		}
+		// don't send password
+		users = append(users, user)
+	}
+	if err := cur.Err(); err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, users)
 }
 
 func UserLogin(ctx *gin.Context) {

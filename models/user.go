@@ -23,6 +23,15 @@ type User struct {
 	Password  string             `json:"password,omitempty" binding:"required"`
 }
 
+// User stores information about a user, sans password
+type UserOutput struct {
+	ID        primitive.ObjectID `json:"id,omitempty" binding:"required" bson:"_id"`
+	Username  string             `json:"username" binding:"required"`
+	FirstName string             `json:"firstName,omitempty"`
+	LastName  string             `json:"lastName,omitempty"`
+	Email     string             `json:"email,omitempty"`
+}
+
 // CreateUserInput stores user information obtained from a CreateUser gin context
 type CreateUserInput struct {
 	Username  string `json:"username" binding:"required"`
