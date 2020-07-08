@@ -22,6 +22,7 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+// CreateUser adds a new user to the database
 func CreateUser(ctx *gin.Context) {
 	var user models.CreateUserInput
 	if err := ctx.ShouldBindJSON(&user); err != nil {
@@ -140,6 +141,7 @@ func GetUser(username string) (user models.User, status int, err error) {
 	return user, http.StatusOK, nil
 }
 
+// getAllUsers returns an array of all users in the database
 func getAllUsers() ([]models.User, error) {
 	users := []models.User{}
 	q := bson.D{}
