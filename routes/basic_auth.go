@@ -2,13 +2,15 @@ package routes
 
 import (
 	"encoding/base64"
-	"github.com/gin-gonic/gin"
-	"github.com/mngibso/blog-api/handlers"
-	"github.com/mngibso/blog-api/models"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/mngibso/blog-api/handlers"
+	"github.com/mngibso/blog-api/models"
 )
 
 // basicAuth returns middleware that checks Basic Authentication
