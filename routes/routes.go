@@ -6,6 +6,18 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine) {
+	// authorized := r.Group("/admin", gin.BasicAuth(gin.Accounts
+	// authorized := r.Group("/admin", gin.BasicAuth(gin.Accounts
+	// "foo":    "bar",
+	// "austin": "1234",
+	// "lena":   "hello2",
+	// "manu":   "4321",
+	// }))
+	auth := router.Group("/v1", basicAuth())
+	{
+		auth.DELETE("/user/:username", handlers.DeleteUser)
+	}
+
 	v1 := router.Group("/v1/")
 	{
 		v1.POST("/post", handlers.CreatePost)
@@ -18,7 +30,6 @@ func SetupRoutes(router *gin.Engine) {
 		v1.POST("/user/login", handlers.UserLogin)
 		v1.POST("/user/logout", handlers.UserLogout)
 		v1.GET("/user/:username", handlers.GetUserByUserName)
-		v1.DELETE("/user/:username", handlers.DeleteUser)
 		v1.PUT("/user/:username", handlers.UpdateUser)
 	}
 }

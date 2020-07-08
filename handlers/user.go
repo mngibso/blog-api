@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/mongo"
-	"log"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/mngibso/blog-api/db"
@@ -15,15 +15,17 @@ import (
 )
 
 const UserCollection = "users"
+const AuthUserKey = "authUsername"
+
+var Accounts map[string]string
+
+func init() {
+	Accounts = map[string]string{}
+}
 
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
-}
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
 }
 
 func CreateUser(ctx *gin.Context) {
@@ -73,9 +75,18 @@ func CreateUser(ctx *gin.Context) {
 // DeleteUser deletes the user and the user's posts
 func DeleteUser(ctx *gin.Context) {
 	username := ctx.Param("username")
+	authUsername := ctx.MustGet(AuthUserKey)
+
 	if username == "" {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
 			Message: "username is required",
+		})
+		return
+	}
+	if username != authUsername {
+		// user can only delete themselves
+		ctx.JSON(http.StatusForbidden, models.ApiResponse{
+			Message: "invalid username",
 		})
 		return
 	}
@@ -98,13 +109,11 @@ func DeleteUser(ctx *gin.Context) {
 		})
 		return
 	}
-	ctx.JSON(http.StatusOK, models.ApiResponse{
-		Message: "user deleted",
-	})
+	ctx.JSON(http.StatusOK, models.ApiResponse{})
 }
 
+// GetUserByUserName returns the user object for the given username.
 func GetUserByUserName(ctx *gin.Context) {
-	var user models.UserOutput
 	username := ctx.Param("username")
 	if username == "" {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -112,51 +121,66 @@ func GetUserByUserName(ctx *gin.Context) {
 		})
 		return
 	}
-	q := bson.D{{"username", username}}
-	err := db.DB.Collection(UserCollection).FindOne(ctx, q).Decode(&user)
+	user, status, err := GetUser(username)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			ctx.JSON(http.StatusNotFound, models.ApiResponse{
-				Message: err.Error(),
-			})
-			return
-		}
-		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
-			Message: "database error: " + err.Error(),
+		ctx.JSON(status, models.ApiResponse{
+			Message: err.Error(),
 		})
 		return
 	}
 	// don't send password
+	user.Password = ""
 	ctx.JSON(http.StatusOK, user)
 }
 
-// GetUsers returns array of users
-func GetUsers(ctx *gin.Context) {
-	users := []models.UserOutput{}
-	q := bson.D{}
-	cur, err := db.DB.Collection(UserCollection).Find(ctx, q)
+// GetUser fetches the user with `username` from the database.  returns `status` as a http status code
+func GetUser(username string) (user models.User, status int, err error) {
+	q := bson.D{{"username", username}}
+	err = db.DB.Collection(UserCollection).FindOne(context.Background(), q).Decode(&user)
 	if err != nil {
-		log.Fatal(err)
+		if err == mongo.ErrNoDocuments {
+			return user, http.StatusNotFound, err
+		}
+		return user, http.StatusInternalServerError, errors.New("database error: " + err.Error())
 	}
-	defer cur.Close(ctx)
+	return user, http.StatusOK, nil
+}
+
+func getAllUsers() ([]models.User, error) {
+	users := []models.User{}
+	q := bson.D{}
+	cur, err := db.DB.Collection(UserCollection).Find(context.Background(), q)
+	if err != nil {
+		return users, errors.New("database error: " + err.Error())
+	}
+	defer cur.Close(context.Background())
 	for cur.Next(context.Background()) {
 		// To decode into a struct, use cursor.Decode()
-		var user models.UserOutput
+		var user models.User
 		err := cur.Decode(&user)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
-				Message: "database error: " + err.Error(),
-			})
-			return
+			return users, errors.New("database error: " + err.Error())
 		}
 		// don't send password
 		users = append(users, user)
 	}
 	if err := cur.Err(); err != nil {
+		return users, errors.New("database error: " + err.Error())
+	}
+	return users, nil
+}
+
+// GetUsers returns array of users
+func GetUsers(ctx *gin.Context) {
+	users, err := getAllUsers()
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
-			Message: "database error: " + err.Error(),
+			Message: err.Error(),
 		})
 		return
+	}
+	for _, v := range users {
+		v.Password = ""
 	}
 	ctx.JSON(http.StatusOK, users)
 }
