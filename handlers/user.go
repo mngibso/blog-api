@@ -17,12 +17,6 @@ import (
 const UserCollection = "users"
 const AuthUserKey = "authUsername"
 
-var Accounts map[string]string
-
-func init() {
-	Accounts = map[string]string{}
-}
-
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
@@ -185,14 +179,57 @@ func GetUsers(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, users)
 }
 
-func UserLogin(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
-}
-
-func UserLogout(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
-}
-
 func UpdateUser(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, data)
+	username := ctx.Param("username")
+	authUsername := ctx.MustGet(AuthUserKey)
+	if username == "" {
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: "username is required",
+		})
+		return
+	}
+	if username != authUsername {
+		// user can only update themselves
+		ctx.JSON(http.StatusForbidden, models.ApiResponse{
+			Message: "invalid username",
+		})
+		return
+	}
+
+	var user models.CreateUserInput
+	if err := ctx.ShouldBindJSON(&user); err != nil {
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if username != user.Username {
+		// user can only update themselves
+		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
+			Message: "usernames must match",
+		})
+		return
+	}
+	q := bson.D{{"username", username}}
+	replacedUser := models.User{}
+	// store hashed password
+	hashed, err := hashPassword(user.Password)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "hashing error: " + err.Error(),
+		})
+		return
+	}
+	user.Password = hashed
+	err = db.DB.Collection(UserCollection).
+		FindOneAndReplace(ctx, q, user).
+		Decode(&replacedUser)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, models.ApiResponse{})
 }
