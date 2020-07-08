@@ -16,14 +16,15 @@ func NewPostFromPostInput(id interface{}, createPost CreatePostInput) *Post {
 type Post struct {
 	ID        primitive.ObjectID `json:"id,omitempty" binding:"required" bson:"_id"`
 	Title     string             `json:"title" binding:"required"`
-	CreatedAt int64              `json:"createdAt,omitempty"`
+	CreatedAt int64              `json:"createdAt,omitempty" bson:"createdAt"`
 	Username  string             `json:"username" binding:"required"`
 	Body      string             `json:"body" binding:"required"`
 }
 
 type CreatePostInput struct {
-	Title     string `json:"title" binding:"required"`
-	CreatedAt int64  `json:"createdAt,omitempty"`
+	Title string `json:"title" binding:"required"`
+	// seconds since epoch
+	CreatedAt int64  `json:"createdAt,omitempty" bson:"createdAt"`
 	Username  string `json:"username,omitempty"`
 	Body      string `json:"body" binding:"required"`
 }
