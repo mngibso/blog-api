@@ -27,9 +27,8 @@ func basicAuth() gin.HandlerFunc {
 		pair := strings.SplitN(string(payload), ":", 2)
 
 		if len(pair) != 2 || !authenticateUser(pair[0], pair[1]) {
-			ctx.JSON(http.StatusUnauthorized, models.ApiResponse{
-				Message: "authentication required",
-			})
+			ctx.Header("WWW-Authenticate", "Authentication Required")
+			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		// set user in context, can be obtained later with ctx.MustGet(handler.AuthUserKey).
