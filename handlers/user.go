@@ -20,10 +20,17 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+type UserAPI struct {
+	DB db.UserStorer
+}
+
+func NewUserAPI(s db.UserStorer) UserAPI {
+	return UserAPI{db.NewUserStore()}
+}
+
 // CreateUser adds a new user to the database. Password is hashed before being stored in the DB.
 // username must be unique
-func CreateUser(ctx *gin.Context) {
-	coll := db.NewUserStore()
+func (u UserAPI) CreateUser(ctx *gin.Context) {
 	var user models.CreateUserInput
 	if err := ctx.ShouldBindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -31,7 +38,7 @@ func CreateUser(ctx *gin.Context) {
 		})
 		return
 	}
-	count, err := coll.CountUsers(ctx, user.Username)
+	count, err := u.DB.CountUsers(ctx, user.Username)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
@@ -54,7 +61,7 @@ func CreateUser(ctx *gin.Context) {
 		return
 	}
 	user.Password = hashed
-	insertedID, err := coll.InsertOne(ctx, user)
+	insertedID, err := u.DB.InsertOne(ctx, user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Code:    http.StatusInternalServerError,
@@ -67,8 +74,7 @@ func CreateUser(ctx *gin.Context) {
 }
 
 // DeleteUser deletes the user and the user's posts
-func DeleteUser(ctx *gin.Context) {
-	coll := db.NewUserStore()
+func (u UserAPI) DeleteUser(ctx *gin.Context) {
 	username := ctx.Param("username")
 	authUsername := ctx.MustGet(AuthUserKey)
 
@@ -85,7 +91,7 @@ func DeleteUser(ctx *gin.Context) {
 		})
 		return
 	}
-	err := coll.DeleteOne(ctx, username)
+	err := u.DB.DeleteOne(ctx, username)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
@@ -105,7 +111,7 @@ func DeleteUser(ctx *gin.Context) {
 }
 
 // GetUserByUserName returns the user object for the given username.
-func GetUserByUserName(ctx *gin.Context) {
+func (u UserAPI) GetUserByUserName(ctx *gin.Context) {
 	username := ctx.Param("username")
 	if username == "" {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -113,7 +119,7 @@ func GetUserByUserName(ctx *gin.Context) {
 		})
 		return
 	}
-	user, status, err := GetUser(username)
+	user, status, err := u.GetUser(username)
 	if err != nil {
 		ctx.JSON(status, models.ApiResponse{
 			Message: err.Error(),
@@ -126,9 +132,8 @@ func GetUserByUserName(ctx *gin.Context) {
 }
 
 // GetUser fetches the user with `username` from the database.  returns `status` as a http status code
-func GetUser(username string) (user models.User, status int, err error) {
-	coll := db.NewUserStore()
-	user, err = coll.FindOne(context.Background(), username)
+func (u UserAPI) GetUser(username string) (user models.User, status int, err error) {
+	user, err = u.DB.FindOne(context.Background(), username)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return user, http.StatusNotFound, err
@@ -139,9 +144,8 @@ func GetUser(username string) (user models.User, status int, err error) {
 }
 
 // getAllUsers returns an array of all users in the database
-func getAllUsers() ([]models.User, error) {
-	coll := db.NewUserStore()
-	users, err := coll.Find(context.Background())
+func (u UserAPI) getAllUsers() ([]models.User, error) {
+	users, err := u.DB.Find(context.Background())
 	if err != nil {
 		return users, errors.New("database error: " + err.Error())
 	}
@@ -149,8 +153,8 @@ func getAllUsers() ([]models.User, error) {
 }
 
 // GetUsers returns array of users
-func GetUsers(ctx *gin.Context) {
-	users, err := getAllUsers()
+func (u UserAPI) GetUsers(ctx *gin.Context) {
+	users, err := u.getAllUsers()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: err.Error(),
@@ -163,8 +167,7 @@ func GetUsers(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, users)
 }
 
-func UpdateUser(ctx *gin.Context) {
-	coll := db.NewUserStore()
+func (u UserAPI) UpdateUser(ctx *gin.Context) {
 	username := ctx.Param("username")
 	authUsername := ctx.MustGet(AuthUserKey)
 	if username == "" {
@@ -205,7 +208,7 @@ func UpdateUser(ctx *gin.Context) {
 		return
 	}
 	user.Password = hashed
-	err = coll.FindOneAndReplace(ctx, user)
+	err = u.DB.FindOneAndReplace(ctx, user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),

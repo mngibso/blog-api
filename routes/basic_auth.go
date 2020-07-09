@@ -1,7 +1,9 @@
 package routes
 
 import (
+	"context"
 	"encoding/base64"
+	"github.com/mngibso/blog-api/db"
 	"log"
 	"net/http"
 	"strings"
@@ -18,7 +20,7 @@ import (
 // in the db.  If the authentication succeeds, the username is saved to the context
 // for use downstream.
 // adapted from: https://www.pandurang-waghulde.com/2018/09/custom-http-basic-authentication-using.html
-func basicAuth() gin.HandlerFunc {
+func basicAuth(udb db.UserStorer) gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {
 		auth := strings.SplitN(ctx.Request.Header.Get("Authorization"), " ", 2)
@@ -32,7 +34,7 @@ func basicAuth() gin.HandlerFunc {
 		payload, _ := base64.StdEncoding.DecodeString(auth[1])
 		pair := strings.SplitN(string(payload), ":", 2)
 
-		if len(pair) != 2 || !authenticateUser(pair[0], pair[1]) {
+		if len(pair) != 2 || !authenticateUser(udb, pair[0], pair[1]) {
 			ctx.Header("WWW-Authenticate", "Authentication Required")
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -44,8 +46,8 @@ func basicAuth() gin.HandlerFunc {
 }
 
 // authenticateUser checks credentials by comparing password in header with password in db
-func authenticateUser(username string, password string) bool {
-	user, _, err := handlers.GetUser(username)
+func authenticateUser(udb db.UserStorer, username string, password string) bool {
+	user, err := udb.FindOne(context.Background(), username)
 	if err != nil {
 		log.Printf("unable to authenticate user, error: %s", err.Error())
 		return false

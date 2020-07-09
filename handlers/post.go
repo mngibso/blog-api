@@ -10,9 +10,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+type PostAPI struct {
+	DB db.PostStorer
+}
+
+func NewPostAPI(p db.PostStorer) PostAPI {
+	return PostAPI{db.NewPostStore()}
+}
+
 // CreatePost creates a blog post in the database
-func CreatePost(ctx *gin.Context) {
-	coll := db.NewPostStore()
+func (p PostAPI) CreatePost(ctx *gin.Context) {
 	var post models.CreatePostInput
 	if err := ctx.ShouldBindJSON(&post); err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -24,7 +31,7 @@ func CreatePost(ctx *gin.Context) {
 	post.Username = authUsername
 	post.CreatedAt = time.Now().Unix()
 
-	insertedID, err := coll.InsertOne(ctx, post)
+	insertedID, err := p.DB.InsertOne(ctx, post)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Code:    http.StatusInternalServerError,
@@ -37,12 +44,11 @@ func CreatePost(ctx *gin.Context) {
 }
 
 // DeletePost deletes a post from the db
-func DeletePost(ctx *gin.Context) {
-	coll := db.NewPostStore()
+func (p PostAPI) DeletePost(ctx *gin.Context) {
 	authUsername := ctx.MustGet(AuthUserKey)
 	postID := ctx.Param("id")
 
-	post, err := coll.FindOne(ctx, postID)
+	post, err := p.DB.FindOne(ctx, postID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			ctx.JSON(http.StatusNotFound, models.ApiResponse{Message: "not found"})
@@ -60,12 +66,11 @@ func DeletePost(ctx *gin.Context) {
 		return
 	}
 
-	coll.FindOneAndDelete(ctx, postID)
+	p.DB.FindOneAndDelete(ctx, postID)
 	ctx.JSON(http.StatusOK, models.ApiResponse{Message: "post deleted"})
 }
 
-func GetPostById(ctx *gin.Context) {
-	coll := db.NewPostStore()
+func (p PostAPI) GetPostById(ctx *gin.Context) {
 	postID := ctx.Param("id")
 	if postID == "" {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -73,7 +78,7 @@ func GetPostById(ctx *gin.Context) {
 		})
 		return
 	}
-	found, err := coll.FindOne(ctx, postID)
+	found, err := p.DB.FindOne(ctx, postID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			ctx.JSON(http.StatusNotFound, models.ApiResponse{Message: "not found"})
@@ -88,10 +93,9 @@ func GetPostById(ctx *gin.Context) {
 
 // GetPost returns all posts in the DB. `username` is an optional
 // query string parameter to filter results for a user.  Sorts by createdAt, descending
-func GetPost(ctx *gin.Context) {
-	coll := db.NewPostStore()
+func (p PostAPI) GetPost(ctx *gin.Context) {
 	username := ctx.Query("username")
-	posts, err := coll.Find(ctx, username)
+	posts, err := p.DB.Find(ctx, username)
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError,
@@ -102,8 +106,7 @@ func GetPost(ctx *gin.Context) {
 }
 
 // UpdatePost replaces an existing post with the request body
-func UpdatePost(ctx *gin.Context) {
-	coll := db.NewPostStore()
+func (p PostAPI) UpdatePost(ctx *gin.Context) {
 	authUsername := ctx.MustGet(AuthUserKey)
 	var post models.Post
 	if err := ctx.ShouldBindJSON(&post); err != nil {
@@ -119,7 +122,7 @@ func UpdatePost(ctx *gin.Context) {
 		})
 		return
 	}
-	if err := coll.FindOneAndReplace(ctx, post); err != nil {
+	if err := p.DB.FindOneAndReplace(ctx, post); err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
 		})
