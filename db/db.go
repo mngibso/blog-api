@@ -33,7 +33,7 @@ type UserStorer interface {
 
 type PostStorer interface {
 	DeleteMany(ctx context.Context, username string) error
-	InsertOne(ctx context.Context, user models.CreatePostInput) (interface{}, error)
+	InsertOne(ctx context.Context, post models.CreatePostInput) (interface{}, error)
 	Find(ctx context.Context, username string) ([]models.Post, error)
 	FindOne(ctx context.Context, postID string) (models.Post, error)
 	FindOneAndDelete(ctx context.Context, postID string) error
@@ -114,7 +114,7 @@ func (s UserStore) Find(ctx context.Context) (users []models.User, err error) {
 }
 
 // Initialize mongodb connection
-func init() {
+func InitializeMongoDB() {
 	uri := os.Getenv("MONGODB_URI")
 	if uri == "" {
 		log.Fatal("`MONGODB_URI must be set in the env")
