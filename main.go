@@ -10,6 +10,7 @@ import (
 
 func main() {
 	r := gin.Default()
+	db.InitializeMongoDB()
 	u := db.NewUserStore()
 	p := db.NewPostStore()
 	routes.SetupRoutes(r, u, p)

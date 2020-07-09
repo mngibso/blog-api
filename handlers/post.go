@@ -15,7 +15,7 @@ type PostAPI struct {
 }
 
 func NewPostAPI(p db.PostStorer) PostAPI {
-	return PostAPI{db.NewPostStore()}
+	return PostAPI{p}
 }
 
 // CreatePost creates a blog post in the database

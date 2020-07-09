@@ -25,7 +25,7 @@ type UserAPI struct {
 }
 
 func NewUserAPI(s db.UserStorer) UserAPI {
-	return UserAPI{db.NewUserStore()}
+	return UserAPI{s}
 }
 
 // CreateUser adds a new user to the database. Password is hashed before being stored in the DB.

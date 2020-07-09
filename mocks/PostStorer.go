@@ -101,13 +101,13 @@ func (_m *PostStorer) FindOneAndReplace(ctx context.Context, post models.Post) e
 	return r0
 }
 
-// InsertOne provides a mock function with given fields: ctx, user
-func (_m *PostStorer) InsertOne(ctx context.Context, user models.CreatePostInput) (interface{}, error) {
-	ret := _m.Called(ctx, user)
+// InsertOne provides a mock function with given fields: ctx, post
+func (_m *PostStorer) InsertOne(ctx context.Context, post models.CreatePostInput) (interface{}, error) {
+	ret := _m.Called(ctx, post)
 
 	var r0 interface{}
 	if rf, ok := ret.Get(0).(func(context.Context, models.CreatePostInput) interface{}); ok {
-		r0 = rf(ctx, user)
+		r0 = rf(ctx, post)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interface{})
@@ -116,7 +116,7 @@ func (_m *PostStorer) InsertOne(ctx context.Context, user models.CreatePostInput
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, models.CreatePostInput) error); ok {
-		r1 = rf(ctx, user)
+		r1 = rf(ctx, post)
 	} else {
 		r1 = ret.Error(1)
 	}
