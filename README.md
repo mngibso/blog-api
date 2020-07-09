@@ -1,4 +1,4 @@
-#blog-api
+# blog-api
 This is the server side of a blogging application using a RESTful api and Mongodb.
 This API enables the consumer to:
 - Create, update and delete users 
@@ -6,7 +6,7 @@ This API enables the consumer to:
 
 Basic authentication is used for protected endpoints.  A user can only update and delete themselves. A user manage only the blog postings they created.
 
-##Setup:
+## Setup:
 
 1. An accessible MongoDB is required to run the api.  [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) provides a free tier that allows you to deploy a cloud MongoDB.
     - Once your database is up, you can obtain the connection string from the "Connect"
@@ -26,7 +26,7 @@ dialog on the Clusters page.  e.g. `mongodb+srv://blog_api:<password>@cluster0.p
    [GIN-debug] Listening and serving HTTP on :8080
     ```
 
-##Run Unit Test
+## Run Unit Test
 
 The API was designed to allow unit tests to be written.  I've written one unit test for the create post handler as an example.
 
@@ -34,7 +34,7 @@ The API was designed to allow unit tests to be written.  I've written one unit t
 go test ./...
 ```
     
-##Testing
+## Testing
 
 1. Create user "allen" with password "password"
     ```
