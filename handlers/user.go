@@ -22,7 +22,8 @@ func hashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-// CreateUser adds a new user to the database
+// CreateUser adds a new user to the database. Password is hashed before being stored in the DB.
+// username must be unique
 func CreateUser(ctx *gin.Context) {
 	var user models.CreateUserInput
 	if err := ctx.ShouldBindJSON(&user); err != nil {
@@ -95,7 +96,7 @@ func DeleteUser(ctx *gin.Context) {
 		return
 	}
 
-	// Delete user posts
+	// delete user posts
 	_, err = db.DB.Collection(PostCollection).
 		DeleteMany(ctx, bson.D{{"username", username}})
 	if err != nil {
@@ -206,8 +207,8 @@ func UpdateUser(ctx *gin.Context) {
 		return
 	}
 
+	// user can only update themselves
 	if username != user.Username {
-		// user can only update themselves
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
 			Message: "usernames must match",
 		})

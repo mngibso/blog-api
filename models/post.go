@@ -2,7 +2,7 @@ package models
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
-// NewPostFromPostInput returns a User given the id and CreateUserInput object
+// NewPostFromPostInput returns a Post given the id and CreatePostInput object
 func NewPostFromPostInput(id interface{}, createPost CreatePostInput) *Post {
 	return &Post{
 		ID:        id.(primitive.ObjectID),
@@ -21,6 +21,7 @@ type Post struct {
 	Body      string             `json:"body" binding:"required"`
 }
 
+// CreatePostInput represents post data sent from client
 type CreatePostInput struct {
 	Title string `json:"title" binding:"required"`
 	// seconds since epoch

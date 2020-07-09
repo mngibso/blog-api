@@ -2,25 +2,22 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"github.com/mngibso/blog-api/db"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	// "go.mongodb.org/mongo-driver/bson"
-	"net/http"
-	"time"
-
-	"github.com/gin-gonic/gin"
+	"github.com/mngibso/blog-api/db"
 	"github.com/mngibso/blog-api/models"
 )
 
 const PostCollection = "posts"
 
-var data = map[string]string{"hi": "there"}
-
+// CreatePost creates a blog post in the database
 func CreatePost(ctx *gin.Context) {
 	var post models.CreatePostInput
 	if err := ctx.ShouldBindJSON(&post); err != nil {
@@ -44,11 +41,11 @@ func CreatePost(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, r)
 }
 
+// DeletePost deletes a post from the db
 func DeletePost(ctx *gin.Context) {
 	authUsername := ctx.MustGet(AuthUserKey)
 	postID, err := primitive.ObjectIDFromHex(ctx.Param("id"))
 
-	fmt.Printf("%s %v", err, postID)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
 			Message: "invalid id: " + err.Error(),
@@ -103,6 +100,8 @@ func GetPostById(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, found)
 }
 
+// GetPost returns all posts in the DB. `username` is an optional
+// query string parameter to filter results for a user.  Sorts by createdAt, descending
 func GetPost(ctx *gin.Context) {
 	q := bson.D{{}}
 	username := ctx.Query("username")
@@ -138,6 +137,7 @@ func GetPost(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, posts)
 }
 
+// UpdatePost replaces an existing post with the request body
 func UpdatePost(ctx *gin.Context) {
 	authUsername := ctx.MustGet(AuthUserKey)
 	id, err := primitive.ObjectIDFromHex(ctx.Param("id"))
@@ -155,14 +155,14 @@ func UpdatePost(ctx *gin.Context) {
 		})
 		return
 	}
+
+	// user can only update their posts
 	if post.Username != authUsername {
-		// user can only update their posts
 		ctx.JSON(http.StatusForbidden, models.ApiResponse{
 			Message: "invalid id or username",
 		})
 		return
 	}
-
 	q := bson.D{{"_id", id}}
 	db.DB.Collection(PostCollection).FindOneAndReplace(ctx, q, post)
 	ctx.JSON(http.StatusOK, models.ApiResponse{Message: "post updated"})

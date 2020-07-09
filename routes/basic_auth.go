@@ -13,7 +13,11 @@ import (
 	"github.com/mngibso/blog-api/models"
 )
 
-// basicAuth returns middleware that checks Basic Authentication
+// basicAuth middleware checks the `Authorization` header for Basic authentication.  If
+// the basic auth header is found, the username/password is checked against user entries
+// in the db.  If the authentication succeeds, the username is saved to the context
+// for use downstream.
+// adapted from: https://www.pandurang-waghulde.com/2018/09/custom-http-basic-authentication-using.html
 func basicAuth() gin.HandlerFunc {
 
 	return func(ctx *gin.Context) {

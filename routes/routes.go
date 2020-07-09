@@ -5,14 +5,10 @@ import (
 	"github.com/mngibso/blog-api/handlers"
 )
 
+// SetupRoutes defines rest api routes and middleware on those routes
 func SetupRoutes(router *gin.Engine) {
-	// authorized := r.Group("/admin", gin.BasicAuth(gin.Accounts
-	// authorized := r.Group("/admin", gin.BasicAuth(gin.Accounts
-	// "foo":    "bar",
-	// "austin": "1234",
-	// "lena":   "hello2",
-	// "manu":   "4321",
-	// }))
+
+	// auth routes are protected by basic authentication using basicAuth middleware
 	auth := router.Group("/v1", basicAuth())
 	{
 		auth.PUT("/post/:id", handlers.UpdatePost)
@@ -22,7 +18,7 @@ func SetupRoutes(router *gin.Engine) {
 		auth.DELETE("/user/:username", handlers.DeleteUser)
 	}
 
-	v1 := router.Group("/v1/")
+	v1 := router.Group("/v1")
 	{
 		v1.GET("/post", handlers.GetPost)
 		v1.GET("/post/:id", handlers.GetPostById)

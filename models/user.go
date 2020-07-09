@@ -32,7 +32,7 @@ type UserOutput struct {
 	Email     string             `json:"email,omitempty"`
 }
 
-// CreateUserInput stores user information obtained from a CreateUser gin context
+// CreateUserInput stores user information obtained from a client request
 type CreateUserInput struct {
 	Username  string `json:"username" binding:"required"`
 	FirstName string `json:"firstName,omitempty"`
