@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/mngibso/blog-api/models"
 )
 
-const UserCollection = "users"
 const AuthUserKey = "authUsername"
 
 func hashPassword(password string) (string, error) {
@@ -25,6 +23,7 @@ func hashPassword(password string) (string, error) {
 // CreateUser adds a new user to the database. Password is hashed before being stored in the DB.
 // username must be unique
 func CreateUser(ctx *gin.Context) {
+	coll := db.NewUserStore()
 	var user models.CreateUserInput
 	if err := ctx.ShouldBindJSON(&user); err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -32,8 +31,7 @@ func CreateUser(ctx *gin.Context) {
 		})
 		return
 	}
-	count, err := db.DB.Collection(UserCollection).
-		CountDocuments(ctx, bson.D{{"username", user.Username}})
+	count, err := coll.CountUsers(ctx, user.Username)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
@@ -56,7 +54,7 @@ func CreateUser(ctx *gin.Context) {
 		return
 	}
 	user.Password = hashed
-	res, err := db.DB.Collection(UserCollection).InsertOne(ctx, user)
+	insertedID, err := coll.InsertOne(ctx, user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Code:    http.StatusInternalServerError,
@@ -64,12 +62,13 @@ func CreateUser(ctx *gin.Context) {
 		})
 		return
 	}
-	r := models.NewUserFromUserInput(res.InsertedID, user)
+	r := models.NewUserFromUserInput(insertedID, user)
 	ctx.JSON(http.StatusCreated, r)
 }
 
 // DeleteUser deletes the user and the user's posts
 func DeleteUser(ctx *gin.Context) {
+	coll := db.NewUserStore()
 	username := ctx.Param("username")
 	authUsername := ctx.MustGet(AuthUserKey)
 
@@ -86,9 +85,7 @@ func DeleteUser(ctx *gin.Context) {
 		})
 		return
 	}
-	q := bson.D{{"username", username}}
-	_, err := db.DB.Collection(UserCollection).
-		DeleteOne(ctx, q)
+	err := coll.DeleteOne(ctx, username)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
@@ -97,8 +94,7 @@ func DeleteUser(ctx *gin.Context) {
 	}
 
 	// delete user posts
-	_, err = db.DB.Collection(PostCollection).
-		DeleteMany(ctx, bson.D{{"username", username}})
+	err = db.NewPostStore().DeleteMany(ctx, username)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),
@@ -131,8 +127,8 @@ func GetUserByUserName(ctx *gin.Context) {
 
 // GetUser fetches the user with `username` from the database.  returns `status` as a http status code
 func GetUser(username string) (user models.User, status int, err error) {
-	q := bson.D{{"username", username}}
-	err = db.DB.Collection(UserCollection).FindOne(context.Background(), q).Decode(&user)
+	coll := db.NewUserStore()
+	user, err = coll.FindOne(context.Background(), username)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return user, http.StatusNotFound, err
@@ -144,24 +140,9 @@ func GetUser(username string) (user models.User, status int, err error) {
 
 // getAllUsers returns an array of all users in the database
 func getAllUsers() ([]models.User, error) {
-	users := []models.User{}
-	q := bson.D{}
-	cur, err := db.DB.Collection(UserCollection).Find(context.Background(), q)
+	coll := db.NewUserStore()
+	users, err := coll.Find(context.Background())
 	if err != nil {
-		return users, errors.New("database error: " + err.Error())
-	}
-	defer cur.Close(context.Background())
-	for cur.Next(context.Background()) {
-		// To decode into a struct, use cursor.Decode()
-		var user models.User
-		err := cur.Decode(&user)
-		if err != nil {
-			return users, errors.New("database error: " + err.Error())
-		}
-		// don't send password
-		users = append(users, user)
-	}
-	if err := cur.Err(); err != nil {
 		return users, errors.New("database error: " + err.Error())
 	}
 	return users, nil
@@ -183,6 +164,7 @@ func GetUsers(ctx *gin.Context) {
 }
 
 func UpdateUser(ctx *gin.Context) {
+	coll := db.NewUserStore()
 	username := ctx.Param("username")
 	authUsername := ctx.MustGet(AuthUserKey)
 	if username == "" {
@@ -214,8 +196,6 @@ func UpdateUser(ctx *gin.Context) {
 		})
 		return
 	}
-	q := bson.D{{"username", username}}
-	replacedUser := models.User{}
 	// store hashed password
 	hashed, err := hashPassword(user.Password)
 	if err != nil {
@@ -225,9 +205,7 @@ func UpdateUser(ctx *gin.Context) {
 		return
 	}
 	user.Password = hashed
-	err = db.DB.Collection(UserCollection).
-		FindOneAndReplace(ctx, q, user).
-		Decode(&replacedUser)
+	err = coll.FindOneAndReplace(ctx, user)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Message: "database error: " + err.Error(),

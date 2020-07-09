@@ -1,24 +1,18 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-
 	"github.com/mngibso/blog-api/db"
 	"github.com/mngibso/blog-api/models"
+	"go.mongodb.org/mongo-driver/mongo"
 )
-
-const PostCollection = "posts"
 
 // CreatePost creates a blog post in the database
 func CreatePost(ctx *gin.Context) {
+	coll := db.NewPostStore()
 	var post models.CreatePostInput
 	if err := ctx.ShouldBindJSON(&post); err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -29,7 +23,8 @@ func CreatePost(ctx *gin.Context) {
 	authUsername := ctx.MustGet(AuthUserKey).(string)
 	post.Username = authUsername
 	post.CreatedAt = time.Now().Unix()
-	res, err := db.DB.Collection(PostCollection).InsertOne(ctx, post)
+
+	insertedID, err := coll.InsertOne(ctx, post)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
 			Code:    http.StatusInternalServerError,
@@ -37,25 +32,17 @@ func CreatePost(ctx *gin.Context) {
 		})
 		return
 	}
-	r := models.NewPostFromPostInput(res.InsertedID, post)
+	r := models.NewPostFromPostInput(insertedID, post)
 	ctx.JSON(http.StatusCreated, r)
 }
 
 // DeletePost deletes a post from the db
 func DeletePost(ctx *gin.Context) {
+	coll := db.NewPostStore()
 	authUsername := ctx.MustGet(AuthUserKey)
-	postID, err := primitive.ObjectIDFromHex(ctx.Param("id"))
+	postID := ctx.Param("id")
 
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
-			Message: "invalid id: " + err.Error(),
-		})
-		return
-	}
-
-	q := bson.M{"_id": postID}
-	found := models.Post{}
-	err = db.DB.Collection(PostCollection).FindOne(context.Background(), q).Decode(&found)
+	post, err := coll.FindOne(ctx, postID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			ctx.JSON(http.StatusNotFound, models.ApiResponse{Message: "not found"})
@@ -67,17 +54,18 @@ func DeletePost(ctx *gin.Context) {
 	}
 
 	// user can only delete their own post
-	if authUsername != found.Username {
+	if authUsername != post.Username {
 		ctx.JSON(http.StatusForbidden,
 			models.ApiResponse{Message: "post not owned by user"})
 		return
 	}
 
-	db.DB.Collection(PostCollection).FindOneAndDelete(ctx, q)
+	coll.FindOneAndDelete(ctx, postID)
 	ctx.JSON(http.StatusOK, models.ApiResponse{Message: "post deleted"})
 }
 
 func GetPostById(ctx *gin.Context) {
+	coll := db.NewPostStore()
 	postID := ctx.Param("id")
 	if postID == "" {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -85,9 +73,7 @@ func GetPostById(ctx *gin.Context) {
 		})
 		return
 	}
-	q := bson.D{{"_id", postID}}
-	found := models.Post{}
-	err := db.DB.Collection(PostCollection).FindOne(ctx, q).Decode(&found)
+	found, err := coll.FindOne(ctx, postID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			ctx.JSON(http.StatusNotFound, models.ApiResponse{Message: "not found"})
@@ -103,33 +89,11 @@ func GetPostById(ctx *gin.Context) {
 // GetPost returns all posts in the DB. `username` is an optional
 // query string parameter to filter results for a user.  Sorts by createdAt, descending
 func GetPost(ctx *gin.Context) {
-	q := bson.D{{}}
+	coll := db.NewPostStore()
 	username := ctx.Query("username")
-	if username != "" {
-		q = bson.D{{"username", username}}
-	}
-	opts := options.Find().SetSort(bson.D{{"createdAt", -1}})
-	posts := []models.Post{}
-	cur, err := db.DB.Collection(PostCollection).Find(ctx, q, opts)
+	posts, err := coll.Find(ctx, username)
+
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError,
-			models.ApiResponse{Message: "database error: " + err.Error()})
-		return
-	}
-	defer cur.Close(ctx)
-	for cur.Next(context.Background()) {
-		// To decode into a struct, use cursor.Decode()
-		var post models.Post
-		err := cur.Decode(&post)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError,
-				models.ApiResponse{Message: "database error: " + err.Error()})
-			return
-		}
-		// don't send password
-		posts = append(posts, post)
-	}
-	if err := cur.Err(); err != nil {
 		ctx.JSON(http.StatusInternalServerError,
 			models.ApiResponse{Message: "database error: " + err.Error()})
 		return
@@ -139,15 +103,8 @@ func GetPost(ctx *gin.Context) {
 
 // UpdatePost replaces an existing post with the request body
 func UpdatePost(ctx *gin.Context) {
+	coll := db.NewPostStore()
 	authUsername := ctx.MustGet(AuthUserKey)
-	id, err := primitive.ObjectIDFromHex(ctx.Param("id"))
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
-			Message: "invalid id: " + err.Error(),
-		})
-		return
-	}
-
 	var post models.Post
 	if err := ctx.ShouldBindJSON(&post); err != nil {
 		ctx.JSON(http.StatusBadRequest, models.ApiResponse{
@@ -155,7 +112,6 @@ func UpdatePost(ctx *gin.Context) {
 		})
 		return
 	}
-
 	// user can only update their posts
 	if post.Username != authUsername {
 		ctx.JSON(http.StatusForbidden, models.ApiResponse{
@@ -163,7 +119,10 @@ func UpdatePost(ctx *gin.Context) {
 		})
 		return
 	}
-	q := bson.D{{"_id", id}}
-	db.DB.Collection(PostCollection).FindOneAndReplace(ctx, q, post)
+	if err := coll.FindOneAndReplace(ctx, post); err != nil {
+		ctx.JSON(http.StatusInternalServerError, models.ApiResponse{
+			Message: "database error: " + err.Error(),
+		})
+	}
 	ctx.JSON(http.StatusOK, models.ApiResponse{Message: "post updated"})
 }
