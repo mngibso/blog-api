@@ -100,15 +100,15 @@ go test ./...
     --header 'Authorization: Basic YmFyYnJhOnBhc3N3b3Jk' \
     --data-raw '{"title":"ALL ABOUT BARBRA!!!!","username":"barbra","body":"The story of Barbra'\''s Life...." ,"createdAt":1594242530 ,"id":"<postID>"}'
 
-    curl --location --request GET 'http://localhost:8080/v1/post<postID>'
+    curl --location --request GET 'http://localhost:8080/v1/post/<postID>'
     ```
 
 7. Allen tries to update Barbra's blog post, results in a 403
     ```
-    curl --location --request PUT 'localhost:8080/v1/post/5f076f99b51e987b586c1d6a' \
+    curl --location --request PUT 'localhost:8080/v1/post/<postID>' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Basic YWxsZW46cGFzc3dvcmQ=' \
-    --data-raw '{"title":"HACKED!!!","username":"barbra","body":"HACKED!!!" ,"createdAt":1594242530 ,"id":"5f076f99b51e987b586c1d6a"}'
+    --data-raw '{"title":"HACKED!!!","username":"barbra","body":"HACKED!!!" ,"createdAt":1594242530 ,"id":"<postID>"}'
     ```
    
 8. Allen deletes his user.  When a user is deleted, all of the user's blog posts are removed as well.
